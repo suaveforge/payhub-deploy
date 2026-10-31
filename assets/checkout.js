@@ -18,6 +18,9 @@
   let activeProvider = '';
   let tossWidgets = null;
   let busy = false;
+  let journalCheckout = false;
+  // Exact product description, never applied to unrelated PayHub merchants.
+  const isJournalTestOrder = (value) => /^기쁜사이 (?:5|10)회 이용권 \(TEST\)$/.test(String(value || ''));
 
   const api = (path, options = {}) => fetch(API_BASE + path, options);
   const hide = (el) => el?.classList.add('hidden');
@@ -59,7 +62,9 @@
   }
 
   function renderSummary(s) {
-    els.title.textContent = s.description || '결제';
+    journalCheckout = isJournalTestOrder(s.description);
+    document.body.classList.toggle('journal-checkout', journalCheckout);
+    els.title.textContent = journalCheckout ? s.description.replace(' (TEST)', '') : (s.description || '결제');
     els.summaryDescription.textContent = '주문 정보를 확인하고 결제수단을 선택해 주세요.';
     els.order.textContent = s.order_id;
     els.country.textContent = `${s.country} · ${s.currency}`;
@@ -244,7 +249,15 @@
     if (!providerOptions.length) { hide(els.loadingState); showError('현재 사용할 수 있는 결제수단이 없습니다. 판매처에 문의해 주세요.'); return; }
 
     activeProvider = preferredProvider(session);
-    renderProviderChooser(); updateProviderSelection();
+    const singleJournalTossTest = journalCheckout && providerOptions.length === 1
+      && providerOptions[0].id === 'toss' && providerOptions[0].mode === 'test';
+    if (singleJournalTossTest) {
+      hide(els.providerChooser);
+      $('#journalTestNotice').hidden = false;
+    } else {
+      // Preserve choices when there is more than one provider, or a live method.
+      renderProviderChooser(); updateProviderSelection();
+    }
     await selectProvider(activeProvider);
   }
 

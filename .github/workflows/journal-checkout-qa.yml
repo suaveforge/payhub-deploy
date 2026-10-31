@@ -81,7 +81,8 @@ jobs:
                   expect(page.locator('#providerChooser')).to_be_hidden()
                   expect(page.locator('#summary')).to_be_hidden()
                   expect(page.locator('.payhub-brand')).to_be_hidden()
-                  expect(page.locator('.payment-heading')).to_be_hidden()
+                  for heading in page.locator('.payment-heading').all():
+                      expect(heading).to_be_hidden()
                   expect(page.locator('.payment-footer')).to_be_hidden()
                   expect(page.locator('#journalTestNotice')).to_be_visible()
                   expect(page.locator('#qa-toss-official')).to_be_visible(timeout=15000)

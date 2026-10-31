@@ -48,7 +48,7 @@ jobs:
               else:
                   route.abort()
                   return
-              route.fulfill(status=200,content_type='application/json',body=json.dumps(payload))
+              route.fulfill(status=200,content_type='application/json',body=json.dumps(payload),headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, POST, OPTIONS'})
           toss_mock='''() => {
             window.TossPayments=function() {
               return {widgets:function(){return {
@@ -85,7 +85,11 @@ jobs:
                       expect(heading).to_be_hidden()
                   expect(page.locator('.payment-footer')).to_be_hidden()
                   expect(page.locator('#journalTestNotice')).to_be_visible()
-                  expect(page.locator('#qa-toss-official')).to_be_visible(timeout=15000)
+                  try:
+                      expect(page.locator('#qa-toss-official')).to_be_visible(timeout=12000)
+                  except Exception:
+                      print('PAYHUB_QA_DEBUG='+json.dumps({'error':page.locator('#errorBox').inner_text(),'info':page.locator('#infoBox').inner_text(),'loading':page.locator('#loadingState').is_visible(),'toss':page.locator('#tossCheckout').is_visible(),'errors':js_errors},ensure_ascii=False),flush=True)
+                      raise
                   expect(page.locator('#tossPayButton')).to_be_enabled()
                   assert page.evaluate('document.documentElement.scrollWidth')<=width, 'horizontal overflow'
                   assert not js_errors,js_errors

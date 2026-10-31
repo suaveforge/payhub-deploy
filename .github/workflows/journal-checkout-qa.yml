@@ -1,0 +1,111 @@
+name: Verify journal's simplified PayHub checkout
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/checkout.js'
+      - 'assets/styles.css'
+      - 'checkout/index.html'
+      - '.github/workflows/journal-checkout-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test journal minimal checkout and other-merchant unchanged
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --check assets/checkout.js
+          python3 -m pip -q install playwright pillow
+          python3 -m http.server 18840 --bind 127.0.0.1 >/tmp/payhub-qa-server.log 2>&1 &
+          cat >/tmp/payhub-checkout-qa.py <<'PY'
+          import json,base64,io
+          from PIL import Image
+          from playwright.sync_api import sync_playwright,expect
+          def session(journal):
+              return dict(
+                session_id='ps_journal_qa',id='ps_journal_qa',
+                order_id='ord_abcdef1234567890',
+                description='기쁜사이 5회 이용권 (TEST)' if journal else '다른 서비스 이용권',
+                amount=1000,country='KR',currency='KRW',status='CREATED',
+                provider_options=[dict(id='toss',name='TossPayments',mode='test',flow='embedded')]
+                   if journal else [dict(id='toss',name='TossPayments',mode='test',flow='embedded'),
+                     dict(id='stripe',name='Stripe',mode='test',flow='hosted')])
+          def fixture(route,journal):
+              url=route.request.url
+              if '/providers/toss/prepare' in url:
+                  payload=dict(mode='toss_widget',client_key='test_gck_synthetic',
+                    payload=dict(currency='KRW',amount=1000,orderId='ord_fixture',
+                      orderName='기쁜사이',successUrl='https://example.invalid/success',
+                      failUrl='https://example.invalid/fail'))
+              elif '/api/public/sessions/' in url:
+                  payload=session(journal)
+              else:
+                  route.abort()
+                  return
+              route.fulfill(status=200,content_type='application/json',body=json.dumps(payload))
+          toss_mock='''() => {
+            window.TossPayments=function() {
+              return {widgets:function(){return {
+                setAmount:async()=>{},
+                renderPaymentMethods:async({selector})=>{
+                  document.querySelector(selector).innerHTML='<div id="qa-toss-official">토스 결제수단</div>';
+                },
+                renderAgreement:async({selector})=>{
+                  document.querySelector(selector).innerHTML='<div id="qa-toss-agreement">약관 동의</div>';
+                },
+                requestPayment:async()=>{throw new Error("DO_NOT_SUBMIT_PAYMENT");}
+              }}};
+            };
+            window.TossPayments.ANONYMOUS='ANONYMOUS';
+          }'''
+          with sync_playwright() as p:
+              browser=p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox'])
+              for width,height in [(390,844),(1365,900)]:
+                  context=browser.new_context(viewport={'width':width,'height':height})
+                  context.add_init_script(toss_mock)
+                  page=context.new_page()
+                  js_errors=[]
+                  page.on('pageerror',lambda e:js_errors.append(str(e)))
+                  page.route('https://js.tosspayments.com/**',lambda route:route.abort())
+                  page.route('https://api-payhub.suaveforge.com/**',lambda route:fixture(route,True))
+                  page.goto('http://127.0.0.1:18840/checkout/?session_id=ps_journal_qa',wait_until='networkidle',timeout=30000)
+                  expect(page.locator('body')).to_have_class('journal-checkout')
+                  expect(page.locator('#checkoutTitle')).to_have_text('기쁜사이 5회 이용권')
+                  expect(page.locator('#amount')).to_contain_text('1,000')
+                  expect(page.locator('#providerChooser')).to_be_hidden()
+                  expect(page.locator('#summary')).to_be_hidden()
+                  expect(page.locator('.payhub-brand')).to_be_hidden()
+                  expect(page.locator('.payment-heading')).to_be_hidden()
+                  expect(page.locator('.payment-footer')).to_be_hidden()
+                  expect(page.locator('#journalTestNotice')).to_be_visible()
+                  expect(page.locator('#qa-toss-official')).to_be_visible(timeout=15000)
+                  expect(page.locator('#tossPayButton')).to_be_enabled()
+                  assert page.evaluate('document.documentElement.scrollWidth')<=width, 'horizontal overflow'
+                  assert not js_errors,js_errors
+                  pic=Image.open(io.BytesIO(page.screenshot(full_page=True))).convert('RGB')
+                  pic.thumbnail((800,950))
+                  buf=io.BytesIO();pic.save(buf,format='JPEG',quality=65,optimize=True)
+                  print('JOURNAL_CHECKOUT_IMAGE_'+('MOBILE' if width<600 else 'DESKTOP')+'='+base64.b64encode(buf.getvalue()).decode(),flush=True)
+                  print('PAYHUB_JOURNAL_MINIMAL_'+('MOBILE' if width<600 else 'DESKTOP')+'=PASS',flush=True)
+                  context.close()
+              # Other merchants keep complete provider chooser.
+              context=browser.new_context(viewport={'width':390,'height':844})
+              context.add_init_script(toss_mock)
+              page=context.new_page()
+              page.route('https://js.tosspayments.com/**',lambda route:route.abort())
+              page.route('https://api-payhub.suaveforge.com/**',lambda route:fixture(route,False))
+              page.goto('http://127.0.0.1:18840/checkout/?session_id=ps_other_qa',wait_until='networkidle',timeout=30000)
+              expect(page.locator('body')).not_to_have_class('journal-checkout')
+              expect(page.locator('#providerChooser')).to_be_visible()
+              expect(page.locator('#providerOptions [data-provider]')).to_have_count(2)
+              expect(page.locator('#journalTestNotice')).to_be_hidden()
+              print('PAYHUB_OTHER_MERCHANT_CHECKOUT_UNCHANGED=PASS',flush=True)
+              browser.close()
+          PY
+          python3 /tmp/payhub-checkout-qa.py

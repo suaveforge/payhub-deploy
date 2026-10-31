@@ -49,7 +49,7 @@ jobs:
                   route.abort()
                   return
               route.fulfill(status=200,content_type='application/json',body=json.dumps(payload),headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, POST, OPTIONS'})
-          toss_mock='''() => {
+          toss_mock='''(() => {
             window.TossPayments=function() {
               return {widgets:function(){return {
                 setAmount:async()=>{},
@@ -63,7 +63,7 @@ jobs:
               }}};
             };
             window.TossPayments.ANONYMOUS='ANONYMOUS';
-          }'''
+          })()'''
           with sync_playwright() as p:
               browser=p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox'])
               for width,height in [(390,844),(1365,900)]:

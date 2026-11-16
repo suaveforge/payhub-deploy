@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="robots" content="noindex,nofollow" />
   <title>PayHub Secure Checkout</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=20261116-bank1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20261116-aqr1" />
   <script src="https://js.tosspayments.com/v2/standard"></script>
 </head>
 <body>
@@ -80,6 +80,23 @@
           </button>
         </section>
 
+        <section id="aqrCheckout" class="provider-checkout hidden" aria-labelledby="aqrCheckoutTitle">
+          <header class="payment-heading">
+            <div><p class="provider-kicker">DIRECT BANK TRANSFER</p><h2 id="aqrCheckoutTitle">계좌송금</h2></div>
+            <span class="official-ui">PG 수수료 없음</span>
+          </header>
+          <p class="payment-copy">현재 주문금액으로 송금 요청을 생성합니다. 송금 후 실제 입금 확인이 완료되면 게임 아이템이 지급됩니다.</p>
+          <button id="aqrStartButton" type="button" class="pay-button">계좌송금 시작</button>
+          <div id="aqrWidgetContainer" class="aqr-widget-container hidden" aria-label="은행 송금 위젯">
+            <div id="aqr-widget-area"></div>
+          </div>
+          <div id="aqrWaiting" class="aqr-waiting hidden" role="status" aria-live="polite">
+            <strong>입금 확인 중</strong>
+            <span>송금 완료 버튼만으로는 결제되지 않습니다. 실제 입금 확인 시 자동 완료됩니다.</span>
+          </div>
+          <p class="bank-consent-notice">고객의 은행 앱에서 실제 이체가 이루어집니다. AQR은 송금 요청 금액을 표시하며 모든 은행 앱의 금액 자동 입력을 보장하지 않습니다.</p>
+        </section>
+
         <section id="bankCheckout" class="provider-checkout hidden" aria-labelledby="bankCheckoutTitle">
           <header class="payment-heading">
             <div><p class="provider-kicker">OPEN BANKING</p><h2 id="bankCheckoutTitle">계좌이체</h2></div>
@@ -113,6 +130,6 @@
     </section>
   </main>
   <script src="/assets/config.js"></script>
-  <script src="/assets/checkout.js?v=20261116-bank1"></script>
+  <script src="/assets/checkout.js?v=20261116-aqr1"></script>
 </body>
 </html>

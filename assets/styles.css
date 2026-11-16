@@ -172,3 +172,11 @@ body.journal-checkout .checkout-alert{font-size:18px;line-height:1.45}
 .bank-option.active{background:#eef6ff;border:2px solid var(--focus);color:#124b9f}
 .bank-consent-notice{margin:16px 0 0;padding:13px 15px;border-radius:10px;background:#f6f8fb;color:var(--sub);font-size:.84rem;line-height:1.55}
 @media(max-width:600px){.bank-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.bank-option{min-height:55px}}
+
+/* AQR payment embedded in PayHub. Actual settlement is verified by QuickBank. */
+.aqr-widget-container{width:100%;padding:15px;border:1px solid var(--line);border-radius:14px;background:#f8f9fa;min-height:180px;margin-top:16px}
+.aqr-widget-container #aqr-widget-area{width:100%;min-height:120px}
+.aqr-waiting{margin-top:16px;padding:17px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;display:grid;gap:4px;color:#194f90}
+.aqr-waiting strong{font-size:1.04rem}
+.aqr-waiting span{font-size:.86rem;line-height:1.5}
+@media(max-width:600px){.aqr-widget-container{padding:10px}.aqr-waiting{padding:13px}}

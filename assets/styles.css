@@ -163,3 +163,12 @@ body.journal-checkout .checkout-alert{font-size:18px;line-height:1.45}
  body.journal-checkout .summary-inner h1{font-size:25px}
  body.journal-checkout .total-block strong{font-size:37px}
 }
+
+/* Direct bank transfer: accessible native bank chooser; no bank app deep link. */
+.bank-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.bank-option{width:100%;min-height:58px;padding:10px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:.95rem;font-weight:700;cursor:pointer;word-break:keep-all}
+.bank-option:hover,.bank-option:focus-visible{border-color:var(--focus)}
+.bank-option:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 25%,transparent);outline-offset:2px}
+.bank-option.active{background:#eef6ff;border:2px solid var(--focus);color:#124b9f}
+.bank-consent-notice{margin:16px 0 0;padding:13px 15px;border-radius:10px;background:#f6f8fb;color:var(--sub);font-size:.84rem;line-height:1.55}
+@media(max-width:600px){.bank-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.bank-option{min-height:55px}}

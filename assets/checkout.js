@@ -9,6 +9,7 @@
     totalBlock: $('#totalBlock'), amount: $('#amount'), loadingState: $('#loadingState'), paidState: $('#paidState'),
     providerChooser: $('#providerChooser'), providerOptions: $('#providerOptions'), providerHint: $('#providerHint'),
     tossCheckout: $('#tossCheckout'), tossPayButton: $('#tossPayButton'), tossPayButtonLabel: $('#tossPayButtonLabel'),
+    bankCheckout: $('#bankCheckout'), bankOptions: $('#bankOptions'), bankPayButton: $('#bankPayButton'),
     hostedCheckout: $('#hostedCheckout'), hostedProviderName: $('#hostedProviderName'), hostedCheckoutCopy: $('#hostedCheckoutCopy'), hostedPayButton: $('#hostedPayButton'),
     errorBox: $('#errorBox'), infoBox: $('#infoBox'), buildVersion: $('#buildVersion'),
   };
@@ -19,7 +20,7 @@
   let tossWidgets = null;
   let busy = false;
   let journalCheckout = false;
-  // Exact product description, never applied to unrelated PayHub merchants.
+  // An explicit, tightly scoped product description; never apply to other PayHub merchants.
   const isJournalTestOrder = (value) => /^기쁜사이 (?:5|10)회 이용권 \(TEST\)$/.test(String(value || ''));
 
   const api = (path, options = {}) => fetch(API_BASE + path, options);
@@ -74,30 +75,31 @@
   }
 
   function normalizeProviderOptions(s) {
-    const labels = { toss: 'TossPayments', stripe: 'Stripe' };
-    const flows = { toss: 'embedded', stripe: 'hosted' };
+    const labels = { toss: 'TossPayments', stripe: 'Stripe', bank_transfer:'계좌이체' };
+    const flows = { toss: 'embedded', stripe: 'hosted', bank_transfer:'bank_consent' };
     if (Array.isArray(s.provider_options) && s.provider_options.length) {
       return s.provider_options.map((p) => ({
         id: String(p.id || '').toLowerCase(),
         name: String(p.name || labels[p.id] || p.id),
         mode: String(p.mode || 'test').toLowerCase(),
         flow: String(p.flow || flows[p.id] || 'hosted').toLowerCase(),
-      })).filter((p) => p.id === 'toss' || p.id === 'stripe');
+      })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'bank_transfer');
     }
     return (Array.isArray(s.providers) ? s.providers : []).map((id) => ({
       id, name: labels[id] || id, mode: 'test', flow: flows[id] || 'hosted',
-    })).filter((p) => p.id === 'toss' || p.id === 'stripe');
+    })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'bank_transfer');
   }
 
   function providerMeta(id) {
     if (id === 'toss') return { title: 'TossPayments', detail: '국내 카드 · 앱카드 · 간편결제' };
     if (id === 'stripe') return { title: 'Stripe', detail: '해외 카드 · 현지 결제수단' };
+    if (id === 'bank_transfer') return { title: '계좌이체', detail: '내 은행 선택 · 금융결제원 계좌 인증' };
     return { title: id, detail: '등록된 결제사' };
   }
 
   function renderProviderChooser() {
     els.providerOptions.innerHTML = '';
-    els.providerHint.textContent = '등록되어 있고 현재 국가·통화에서 사용 가능한 실제 결제사입니다.';
+    els.providerHint.textContent = '사용할 수 있는 결제수단만 표시됩니다.';
 
     for (const option of providerOptions) {
       const meta = providerMeta(option.id);
@@ -128,8 +130,10 @@
     });
   }
 
-  async function prepare(name) {
-    const r = await api(`/api/public/sessions/${encodeURIComponent(sessionId)}/providers/${encodeURIComponent(name)}/prepare`, { method: 'POST' });
+  async function prepare(name, input = null) {
+    const opts = { method:'POST' };
+    if (input) { opts.headers = { 'Content-Type':'application/json' }; opts.body = JSON.stringify(input); }
+    const r = await api(`/api/public/sessions/${encodeURIComponent(sessionId)}/providers/${encodeURIComponent(name)}/prepare`, opts);
     let payload = {};
     try { payload = await r.json(); } catch {}
     if (!r.ok) throw new Error(payload.error || `결제 준비에 실패했습니다. (${r.status})`);
@@ -137,7 +141,7 @@
   }
 
   async function mountToss(s) {
-    hide(els.hostedCheckout); show(els.tossCheckout); clearError();
+    hide(els.hostedCheckout); hide(els.bankCheckout); show(els.tossCheckout); clearError();
     $('#toss-payment-method').innerHTML = '';
     $('#toss-agreement').innerHTML = '';
     els.tossPayButton.disabled = true;
@@ -171,6 +175,61 @@
     };
   }
 
+  const banks = [
+    ['004','국민은행'],['088','신한은행'],['020','우리은행'],['081','하나은행'],
+    ['011','농협은행'],['003','기업은행'],['090','카카오뱅크'],['092','토스뱅크'],
+    ['089','케이뱅크'],['023','SC제일은행'],['002','산업은행'],['007','수협은행'],
+    ['031','iM뱅크'],['032','부산은행'],['034','광주은행'],['039','경남은행'],
+    ['037','전북은행'],['035','제주은행'],['045','새마을금고'],['048','신협'],['071','우체국']
+  ];
+
+  function mountBank() {
+    hide(els.tossCheckout); hide(els.hostedCheckout); show(els.bankCheckout); clearError();
+    els.bankOptions.replaceChildren();
+    els.bankPayButton.disabled = true;
+    els.bankPayButton.textContent = '은행을 선택하세요';
+    let selected = '';
+    for (const [code, label] of banks) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'bank-option';
+      button.setAttribute('role','radio');
+      button.setAttribute('aria-checked','false');
+      button.textContent = label;
+      button.onclick = () => {
+        selected = code;
+        els.bankOptions.querySelectorAll('.bank-option').forEach(el => {
+          const active = el === button;
+          el.classList.toggle('active', active);
+          el.setAttribute('aria-checked', String(active));
+        });
+        els.bankPayButton.disabled = false;
+        els.bankPayButton.textContent = `${label} 계좌 인증 및 이체`;
+      };
+      els.bankOptions.appendChild(button);
+    }
+    els.bankPayButton.onclick = async () => {
+      if (busy || !selected) return;
+      busy = true; clearError();
+      els.bankPayButton.disabled = true;
+      els.bankPayButton.setAttribute('aria-busy','true');
+      try {
+        const prepared = await prepare('bank_transfer', {bank_code: selected});
+        if (prepared.mode !== 'redirect' || !prepared.url) throw new Error('은행 인증을 시작하지 못했습니다.');
+        const auth = new URL(prepared.url);
+        if (auth.protocol !== 'https:' || auth.hostname !== 'openapi.openbanking.or.kr') {
+          throw new Error('공식 오픈뱅킹 인증 주소가 아닙니다.');
+        }
+        location.assign(auth.href);
+      } catch(error) {
+        showError(error.message || '은행 인증을 시작하지 못했습니다.');
+        busy = false;
+        els.bankPayButton.disabled = false;
+        els.bankPayButton.removeAttribute('aria-busy');
+      }
+    };
+  }
+
   function hostedProviderCopy(name, s) {
     if (name === 'stripe') return {
       name: 'Stripe Checkout', title: s.country === 'KR' ? '해외 카드로 결제' : '카드 · 현지 결제수단',
@@ -180,7 +239,7 @@
   }
 
   function showHostedProvider(name, s) {
-    hide(els.tossCheckout); show(els.hostedCheckout); clearError();
+    hide(els.tossCheckout); hide(els.bankCheckout); show(els.hostedCheckout); clearError();
     const copy = hostedProviderCopy(name, s);
     els.hostedProviderName.textContent = copy.name;
     $('#hostedCheckoutTitle').textContent = copy.title;
@@ -217,6 +276,9 @@
   async function selectProvider(name) {
     if (busy || !providerOptions.some((p) => p.id === name)) return;
     activeProvider = name; updateProviderSelection(); clearError(); tossWidgets = null;
+    if (name === 'bank_transfer') {
+      hide(els.loadingState); mountBank(); return;
+    }
     if (name === 'toss') {
       show(els.loadingState); hide(els.hostedCheckout); hide(els.tossCheckout);
       try { await mountToss(session); }
@@ -255,7 +317,8 @@
       hide(els.providerChooser);
       $('#journalTestNotice').hidden = false;
     } else {
-      // Preserve choices when there is more than one provider, or a live method.
+      // Provider choice remains available when there is more than one eligible method.
+      // Never silently hide a live provider or bypass its official payment widget.
       renderProviderChooser(); updateProviderSelection();
     }
     await selectProvider(activeProvider);

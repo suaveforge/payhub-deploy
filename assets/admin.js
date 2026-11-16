@@ -7,7 +7,7 @@
     navProjects: $('#navProjects'), navSessions: $('#navSessions'), navProjectCount: $('#navProjectCount'), apiHealthLink: $('#apiHealthLink'),
     homeView: $('#homeView'), projectsView: $('#projectsView'), sessionsView: $('#sessionsView'), projectsListPane: $('#projectsListPane'), projectEditorPane: $('#projectEditorPane'), projectsResult: $('#projectsResult'),
     projectList: $('#projectList'), projectListCount: $('#projectListCount'), projectForm: $('#projectForm'), projectId: $('#projectId'), projectName: $('#projectName'), projectEnabled: $('#projectEnabled'), projectSourceHint: $('#projectSourceHint'), origins: $('#origins'), webhookUrl: $('#webhookUrl'), apiKey: $('#apiKey'), webhookSecret: $('#webhookSecret'),
-    tossEnabled: $('#tossEnabled'), tossMode: $('#tossMode'), tossClientKey: $('#tossClientKey'), tossSecretKey: $('#tossSecretKey'), stripeEnabled: $('#stripeEnabled'), stripeMode: $('#stripeMode'), stripeSecretKey: $('#stripeSecretKey'),
+    tossEnabled: $('#tossEnabled'), tossMode: $('#tossMode'), tossClientKey: $('#tossClientKey'), tossSecretKey: $('#tossSecretKey'), stripeEnabled: $('#stripeEnabled'), stripeMode: $('#stripeMode'), stripeSecretKey: $('#stripeSecretKey'), bankTransferEnabled: $('#bankTransferEnabled'),
     homeProjectCards: $('#homeProjectCards'), homeProjectSummary: $('#homeProjectSummary'), homeSessionRows: $('#homeSessionRows'), sessionRows: $('#sessionRows'), sessionFilters: $('#sessionFilters'),
     editorTitle: $('#editorTitle'), editorState: $('#editorState'), saveProject: $('#saveProject'), cancelProject: $('#cancelProject'), backProjects: $('#backProjects'),
     stripeConnectionSummary: $('#stripeConnectionSummary'), stripeProjectIdPreview: $('#stripeProjectIdPreview'), stripeDisplayNamePreview: $('#stripeDisplayNamePreview'), stripeWebhookPreview: $('#stripeWebhookPreview'),
@@ -199,7 +199,7 @@
   function projectName(id) { const p=payhubProject(id); return p ? projectDisplayName(p) : monitorProject(id)?.name || id; }
   function provider(p, name) { return p?.providers?.[name] || {enabled:false,mode:'test',client_key:'',secret_key:''}; }
   function enabledProviderStates(p) {
-    const labels = {toss:'Toss', stripe:'Stripe'};
+    const labels = {toss:'Toss', stripe:'Stripe', bank_transfer:'은행이체'};
     return Object.entries(p?.providers || {})
       .filter(([key,settings])=>key!=='mock' && settings?.enabled)
       .map(([key,settings])=>{
@@ -324,9 +324,10 @@
     els.editorState.textContent = p.enabled ? '활성' : '비활성'; els.editorState.className=`state-chip ${p.enabled?'on':'off'}`;
     renderProjectOptions(p.id); els.projectName.value=p.name||p.id; els.projectEnabled.checked=!!p.enabled;
     els.origins.value=(p.allowed_return_origins||[]).join('\n'); applyHubBridge(p.id,p.webhook_url||''); els.apiKey.value=p.api_key||''; els.webhookSecret.value=p.webhook_secret||'';
-    const t=provider(p,'toss'), st=provider(p,'stripe');
+    const t=provider(p,'toss'), st=provider(p,'stripe'), bank=provider(p,'bank_transfer');
     els.tossEnabled.checked=!!t.enabled; els.tossMode.value=t.mode||'test'; els.tossClientKey.value=t.client_key||''; els.tossSecretKey.value=t.secret_key||'';
     els.stripeEnabled.checked=!!st.enabled; els.stripeMode.value=st.mode||'test'; els.stripeSecretKey.value=st.secret_key||'';
+    els.bankTransferEnabled.checked=!!bank.enabled;
     $('#deleteProject').disabled=false; $('#rotateApi').disabled=false; $('#rotateWebhook').disabled=false; renderProjectList(); refreshStripeConnectionSummary();
     setProjectPane('edit'); showView('projects',{push:false}); showProjectResult('');
     if(push && location.hash !== projectRouteHash(p.id)) history.pushState(null,'',projectRouteHash(p.id));
@@ -352,7 +353,8 @@
       allowed_return_origins: els.origins.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
       providers: {
         toss: {enabled:els.tossEnabled.checked,mode:els.tossMode.value,client_key:els.tossClientKey.value.trim(),secret_key:els.tossSecretKey.value.trim()},
-        stripe: {enabled:els.stripeEnabled.checked,mode:els.stripeMode.value,secret_key:els.stripeSecretKey.value.trim()}
+        stripe: {enabled:els.stripeEnabled.checked,mode:els.stripeMode.value,secret_key:els.stripeSecretKey.value.trim()},
+        bank_transfer: {enabled:els.bankTransferEnabled.checked,mode:'live'}
       }
     };
   }

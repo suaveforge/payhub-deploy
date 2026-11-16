@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="robots" content="noindex,nofollow" />
   <title>PayHub Secure Checkout</title>
-  <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20261116-bank1" />
   <script src="https://js.tosspayments.com/v2/standard"></script>
 </head>
 <body>
@@ -53,10 +53,10 @@
           <header class="payment-heading provider-heading">
             <div>
               <p class="provider-kicker">PAYMENT PROVIDER</p>
-              <h2 id="providerChooserTitle">결제사 선택</h2>
+              <h2 id="providerChooserTitle">결제수단 선택</h2>
             </div>
           </header>
-          <p id="providerHint" class="payment-copy">등록된 결제사를 확인하고 선택하세요.</p>
+          <p id="providerHint" class="payment-copy">사용 가능한 결제수단을 선택하세요.</p>
           <div id="providerOptions" class="provider-options" role="radiogroup" aria-label="사용 가능한 결제사"></div>
         </section>
 
@@ -78,6 +78,17 @@
           <button id="tossPayButton" class="pay-button" type="button" disabled>
             <span id="tossPayButtonLabel">결제하기</span>
           </button>
+        </section>
+
+        <section id="bankCheckout" class="provider-checkout hidden" aria-labelledby="bankCheckoutTitle">
+          <header class="payment-heading">
+            <div><p class="provider-kicker">OPEN BANKING</p><h2 id="bankCheckoutTitle">계좌이체</h2></div>
+            <span class="official-ui">금융결제원 인증</span>
+          </header>
+          <p class="payment-copy">출금할 은행을 선택하세요. 별도 은행 앱을 열 필요 없이 공식 오픈뱅킹 계좌 인증으로 이어집니다.</p>
+          <div id="bankOptions" class="bank-options" role="radiogroup" aria-label="출금 은행 선택"></div>
+          <p class="bank-consent-notice">선택한 은행의 계좌 확인과 출금 동의는 금융결제원 인증 화면에서 진행됩니다. 인증만으로 결제 완료되지 않습니다.</p>
+          <button id="bankPayButton" class="pay-button" type="button" disabled>은행을 선택하세요</button>
         </section>
 
         <section id="hostedCheckout" class="provider-checkout hidden" aria-labelledby="hostedCheckoutTitle">
@@ -102,6 +113,6 @@
     </section>
   </main>
   <script src="/assets/config.js"></script>
-  <script src="/assets/checkout.js"></script>
+  <script src="/assets/checkout.js?v=20261116-bank1"></script>
 </body>
 </html>

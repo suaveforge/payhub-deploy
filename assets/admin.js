@@ -203,6 +203,7 @@
     return Object.entries(p?.providers || {})
       .filter(([key,settings])=>key!=='mock' && settings?.enabled)
       .map(([key,settings])=>{
+        if (key==='bank_transfer') return {label:'은행이체 · 승인 확인 필요', color:'test'};
         const live = String(settings.mode || 'test').toLowerCase()==='live';
         return {label: `${labels[key] || key} · ${live ? '운영' : '테스트'}`, color:live?'on':'test'};
       });

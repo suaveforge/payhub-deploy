@@ -5,3 +5,73 @@
 /* R28 project settings flow: list -> dedicated editor, following established admin list/detail patterns. */
 .project-panel-full{position:static}.project-list-full{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.project-list-full .project-item{min-height:92px;padding:.9rem 1rem}.project-list-full .project-item.just-saved{border-color:var(--pico-primary-border);box-shadow:0 0 0 2px color-mix(in srgb,var(--pico-primary) 12%,transparent)}.action-result{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--pico-primary-border);border-radius:var(--pico-border-radius);background:color-mix(in srgb,var(--pico-primary) 7%,var(--pico-card-background-color));font-weight:700}.action-result.settled{font-weight:600}.back-link{width:auto;margin:.35rem 0 .15rem;padding:.35rem 0;border:0;background:transparent;color:var(--pico-primary);box-shadow:none;text-align:left}.back-link:hover{background:transparent;text-decoration:underline}.editor-page-heading{margin-top:.25rem}.editor-actions{align-items:center;position:sticky;bottom:0;z-index:5;margin:1.25rem -1rem -1rem;padding:.8rem 1rem;border-top:1px solid var(--pico-muted-border-color);background:var(--pico-card-background-color)}.editor-action-spacer{flex:1}.connection-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin:.25rem 0 1rem;padding:.85rem 1rem;border:1px solid var(--pico-muted-border-color);border-radius:var(--pico-border-radius);background:color-mix(in srgb,var(--pico-card-background-color) 94%,var(--pico-muted-border-color))}.connection-summary>div{display:grid;gap:.15rem;min-width:0}.connection-summary .wide{grid-column:1/-1}.connection-summary span{font-size:.72rem;color:var(--pico-muted-color)}.connection-summary strong{font-size:.88rem;overflow-wrap:anywhere}.connection-summary.ready{border-color:var(--pico-primary-border)}
 @media(max-width:760px){.project-list-full{grid-template-columns:1fr}.editor-action-spacer{display:none}.editor-actions{align-items:stretch}}
+
+/* Admin home readability: Pico's filled-button text tokens must not make
+   dashboard figures and project names white on white button cards. */
+#homeView .metric-card,
+#homeView .home-project-card,
+#projectsView .project-item { color:var(--pico-contrast); }
+#homeView .metric-card > strong,
+#homeView .home-project-card .project-card-head > strong,
+#projectsView .project-item .project-item-head > strong {
+  color:var(--pico-contrast) !important;
+  opacity:1;
+  visibility:visible;
+}
+#homeView .metric-card > strong {
+  display:block;
+  font-size:2.35rem;
+  font-weight:800;
+  line-height:1.12;
+  font-variant-numeric:tabular-nums;
+}
+#homeView .home-project-card {
+  display:flex;
+  flex-direction:column;
+  gap:.65rem;
+  min-height:102px;
+  padding:.85rem 1rem;
+}
+#homeView .home-project-card .project-card-head,
+#projectsView .project-item .project-item-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:.7rem;
+  min-width:0;
+}
+#homeView .home-project-card .project-card-head > strong,
+#projectsView .project-item .project-item-head > strong {
+  flex:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+  font-size:1.08rem;
+  line-height:1.35;
+  text-align:left;
+}
+#homeView .home-project-card .project-card-head > .project-item-id,
+#projectsView .project-item .project-item-head > .project-item-id {
+  flex-shrink:0;
+  font-size:.8rem;
+  line-height:1.45;
+}
+#homeView .home-project-card .project-card-meta {
+  margin-top:auto;
+  gap:.35rem;
+}
+#homeView .home-project-card .mini-chip,
+#projectsView .project-item .mini-chip {
+  font-size:.77rem;
+  padding:.18rem .5rem;
+}
+.mini-chip.neutral {
+  background:color-mix(in srgb,var(--pico-muted-border-color) 65%,transparent);
+  color:var(--pico-contrast);
+}
+.mini-chip.test {
+  background:color-mix(in srgb,#d68910 16%,transparent);
+  color:#a56600;
+}
+@media (max-width:600px) {
+  #homeView .metric-card > strong {font-size:2rem}
+}

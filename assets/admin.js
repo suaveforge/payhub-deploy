@@ -190,11 +190,22 @@
     els.webhookUrl.readOnly = true;
     els.webhookHint.textContent = projectId ? 'PayHub DB의 기존 Hub Bridge 값을 보존합니다. Monitor 목록은 프로젝트 메타데이터 확인용입니다.' : 'Monitor 프로젝트 선택 시 공개 URL + /api/hub/events로 자동 설정합니다.';
   }
-  function projectName(id) { return payhubProject(id)?.name || monitorProject(id)?.name || id; }
+  function projectDisplayName(project) {
+    const saved = String(project?.name || '').trim();
+    const id = String(project?.id || '');
+    if (saved && saved.toLowerCase() !== id.toLowerCase()) return saved;
+    return String(monitorProject(id)?.name || '').trim() || saved || id || '이름 없는 프로젝트';
+  }
+  function projectName(id) { const p=payhubProject(id); return p ? projectDisplayName(p) : monitorProject(id)?.name || id; }
   function provider(p, name) { return p?.providers?.[name] || {enabled:false,mode:'test',client_key:'',secret_key:''}; }
-  function enabledProviderNames(p) {
+  function enabledProviderStates(p) {
     const labels = {toss:'Toss', stripe:'Stripe'};
-    return Object.entries(p?.providers || {}).filter(([k,v])=>k!=='mock' && v?.enabled).map(([k])=>labels[k] || k);
+    return Object.entries(p?.providers || {})
+      .filter(([key,settings])=>key!=='mock' && settings?.enabled)
+      .map(([key,settings])=>{
+        const live = String(settings.mode || 'test').toLowerCase()==='live';
+        return {label: `${labels[key] || key} · ${live ? '운영' : '테스트'}`, color:live?'on':'test'};
+      });
   }
   function statusLabel(status) {
     return {PAID:'완료',PROCESSING:'처리 중',FAILED:'실패',CANCELLED:'취소',CREATED:'생성'}[status] || status || '-';
@@ -262,14 +273,14 @@
     }
     for (const p of projects.slice(0,6)) {
       const b=document.createElement('button'); b.type='button'; b.className='home-project-card';
-      const connectionStatus=payhubConnectionStatus(p); const providers=enabledProviderNames(p);
+      const connectionStatus=payhubConnectionStatus(p); const providers=enabledProviderStates(p);
       const head=document.createElement('div'); head.className='project-card-head';
-      const name=document.createElement('strong'); name.textContent=p.name || p.id;
+      const name=document.createElement('strong'); name.textContent=projectDisplayName(p);
       const id=document.createElement('span'); id.className='project-item-id'; id.textContent=p.id;
       head.append(name,id);
       const meta=document.createElement('div'); meta.className='project-card-meta';
-      meta.append(chip(p.enabled?'API ON':'API OFF',p.enabled?'on':'off'), chip(connectionStatus.label,connectionStatus.state==='connected'?'on':'off'));
-      for(const label of providers.slice(0,3)) meta.append(chip(label,'on'));
+      meta.append(chip(p.enabled?'API 활성':'API 중지',p.enabled?'neutral':'off'), chip(connectionStatus.label,connectionStatus.state==='connected'?'neutral':'off'));
+      for(const provider of providers.slice(0,3)) meta.append(chip(provider.label,provider.color));
       if(!providers.length) meta.append(chip('PG 미설정','off'));
       b.append(head,meta); b.onclick=()=>editProject(p); els.homeProjectCards.appendChild(b);
     }
@@ -284,14 +295,15 @@
     }
     for (const p of projects) {
       const b=document.createElement('button'); b.type='button'; b.className='project-item' + (p.id===selectedId?' active':'');
-      const connectionStatus=payhubConnectionStatus(p); const providers=enabledProviderNames(p);
+      const connectionStatus=payhubConnectionStatus(p); const providers=enabledProviderStates(p);
       const head=document.createElement('span'); head.className='project-item-head';
-      const name=document.createElement('strong'); name.textContent=p.name || p.id;
+      const name=document.createElement('strong'); name.textContent=projectDisplayName(p);
       const id=document.createElement('span'); id.className='project-item-id'; id.textContent=p.id;
       head.append(name,id);
       const meta=document.createElement('span'); meta.className='project-item-meta';
-      meta.append(chip(p.enabled?'ON':'OFF',p.enabled?'on':'off'), chip(connectionStatus.state==='connected'?'연결됨':'중지됨',connectionStatus.state==='connected'?'on':'off'));
-      if(providers.length) meta.append(chip(providers.join(' · '),'on')); else meta.append(chip('PG 미설정','off'));
+      meta.append(chip(p.enabled?'API 활성':'API 중지',p.enabled?'neutral':'off'), chip(connectionStatus.label,connectionStatus.state==='connected'?'neutral':'off'));
+      if(providers.length) providers.slice(0,3).forEach(provider=>meta.append(chip(provider.label,provider.color)));
+      else meta.append(chip('PG 미설정','off'));
       b.dataset.projectId=p.id; b.append(head,meta); b.onclick=()=>editProject(p); els.projectList.appendChild(b);
     }
   }

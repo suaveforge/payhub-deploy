@@ -77,24 +77,25 @@
   }
 
   function normalizeProviderOptions(s) {
-    const labels = { toss: 'TossPayments', stripe: 'Stripe', bank_transfer:'계좌이체', aqr_transfer:'무료 계좌송금' };
-    const flows = { toss: 'embedded', stripe: 'hosted', bank_transfer:'bank_consent', aqr_transfer:'aqr_widget' };
+    const labels = { toss: 'TossPayments', stripe: 'Stripe', paypal: 'PayPal', bank_transfer:'계좌이체', aqr_transfer:'무료 계좌송금' };
+    const flows = { toss: 'embedded', stripe: 'hosted', paypal: 'hosted', bank_transfer:'bank_consent', aqr_transfer:'aqr_widget' };
     if (Array.isArray(s.provider_options) && s.provider_options.length) {
       return s.provider_options.map((p) => ({
         id: String(p.id || '').toLowerCase(),
         name: String(p.name || labels[p.id] || p.id),
         mode: String(p.mode || 'test').toLowerCase(),
         flow: String(p.flow || flows[p.id] || 'hosted').toLowerCase(),
-      })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'bank_transfer' || p.id === 'aqr_transfer');
+      })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'paypal' || p.id === 'bank_transfer' || p.id === 'aqr_transfer');
     }
     return (Array.isArray(s.providers) ? s.providers : []).map((id) => ({
       id, name: labels[id] || id, mode: 'test', flow: flows[id] || 'hosted',
-    })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'bank_transfer' || p.id === 'aqr_transfer');
+    })).filter((p) => p.id === 'toss' || p.id === 'stripe' || p.id === 'paypal' || p.id === 'bank_transfer' || p.id === 'aqr_transfer');
   }
 
   function providerMeta(id) {
     if (id === 'toss') return { title: 'TossPayments', detail: '국내 카드 · 앱카드 · 간편결제' };
     if (id === 'stripe') return { title: 'Stripe', detail: '해외 카드 · 현지 결제수단' };
+    if (id === 'paypal') return { title: 'PayPal', detail: '미국 PayPal 계정 결제 · USD' };
     if (id === 'bank_transfer') return { title: '계좌이체', detail: '내 은행 선택 · 금융결제원 계좌 인증' };
     if (id === 'aqr_transfer') return { title: '무료 계좌송금', detail: 'PG 비율 수수료 없음 · 은행송금 · 자동 입금 확인' };
     return { title: id, detail: '등록된 결제사' };
@@ -327,6 +328,9 @@
       name: 'Stripe Checkout', title: s.country === 'KR' ? '해외 카드로 결제' : '카드 · 현지 결제수단',
       copy: 'Stripe의 보안 Checkout으로 이동해 사용 가능한 카드 및 현지 결제수단을 선택합니다.', button: 'Stripe Checkout으로 이동',
     };
+    if (name === 'paypal') return {
+      name: 'PayPal', title: 'PayPal로 결제', copy: 'PayPal 공식 화면에서 승인을 완료하면 PayHub가 최종 결제 여부를 확인합니다.', button: 'PayPal로 계속하기',
+    };
     return { name, title: '결제 계속하기', copy: '결제사 화면에서 결제를 완료합니다.', button: '계속' };
   }
 
@@ -390,6 +394,7 @@
     if (s.country === 'KR' && s.currency === 'KRW' && ids.includes('aqr_transfer')) return 'aqr_transfer';
     if (s.country === 'KR' && s.currency === 'KRW' && ids.includes('toss')) return 'toss';
     if (ids.includes('stripe')) return 'stripe';
+    if (ids.includes('paypal')) return 'paypal';
     return ids[0] || '';
   }
 

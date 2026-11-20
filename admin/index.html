@@ -155,6 +155,16 @@
                   <div class="wide"><span>웹훅 URL</span><strong id="stripeWebhookPreview">프로젝트 선택 필요</strong></div>
                 </div>
 
+                <hr />
+                <h5>PayPal · 미국 결제</h5>
+                <div class="grid">
+                  <label><input id="paypalEnabled" type="checkbox" role="switch" /> 사용</label>
+                  <label>환경<select id="paypalMode"><option value="test">SANDBOX</option><option value="live">LIVE</option></select></label>
+                </div>
+                <div class="grid">
+                  <label>PayPal REST Client ID<input id="paypalClientId" type="text" autocomplete="off" placeholder="PayPal Developer App Client ID" /></label>
+                  <label>PayPal REST Secret<input id="paypalSecret" type="password" autocomplete="new-password" placeholder="미입력 시 기존 Secret 보존" /><small>Secret은 다시 표시하지 않습니다. 미국 USD 결제에서만 활성화됩니다.</small></label>
+                </div>
                 <footer class="editor-actions">
                   <button id="cancelProject" type="button" class="outline secondary">취소</button>
                   <span class="editor-action-spacer"></span>
@@ -190,6 +200,6 @@
     <footer class="build-footer"><small id="buildVersion">PayHub</small></footer>
   </main>
   <script src="/assets/config.js"></script>
-  <script src="/assets/admin.js?v=20261116-aqr1"></script>
+  <script src="/assets/admin.js?v=20261120-paypal01"></script>
 </body>
 </html>

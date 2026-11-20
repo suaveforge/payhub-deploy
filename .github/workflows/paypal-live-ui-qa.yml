@@ -1,0 +1,54 @@
+name: Verify PayPal option in deployed PayHub UI
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/paypal-live-ui-qa.yml]
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Assert deployed PayPal controls and checkout chooser (mock session only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip -q install playwright
+          mkdir -p /tmp/payhub-paypal-ui
+          cat >/tmp/payhub-paypal-ui.py <<'PY'
+          from playwright.sync_api import sync_playwright
+          ROOT='https://payhub.suaveforge.com'
+          fake={'id':'ps_paypal_visual_qa','order_id':'qa_order_us','amount':1299,'currency':'USD','country':'US','description':'PayHub US PayPal UI check','status':'CREATED','expires_at':'2099-01-01T00:00:00Z',
+            'providers':['stripe','paypal'],'provider_options':[{'id':'stripe','name':'Stripe','mode':'test','flow':'hosted'},{'id':'paypal','name':'PayPal','mode':'test','flow':'hosted'}]}
+          with sync_playwright() as p:
+            browser=p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox'])
+            for label,width,height in [('desktop',1365,900),('mobile',390,844)]:
+              page=browser.new_page(viewport={'width':width,'height':height},device_scale_factor=1)
+              response=page.goto(ROOT+'/admin/',wait_until='domcontentloaded',timeout=45000)
+              assert response.status==200
+              for id in ['paypalEnabled','paypalMode','paypalClientId','paypalSecret']:
+                assert page.locator('#'+id).count()==1,(label,'missing PayPal admin control',id)
+              page.route('**/api/public/sessions/ps_paypal_visual_qa',lambda route:route.fulfill(status=200,content_type='application/json',json=fake))
+              res=page.goto(ROOT+'/checkout/?session_id=ps_paypal_visual_qa',wait_until='domcontentloaded',timeout=45000)
+              assert res.status==200
+              option=page.locator('[data-provider="paypal"]')
+              option.wait_for(state='visible',timeout=15000)
+              assert 'PayPal' in option.inner_text()
+              option.click()
+              assert page.locator('#hostedCheckout').is_visible()
+              assert 'PayPal' in page.locator('#hostedPayButton').inner_text()
+              assert page.evaluate('document.documentElement.scrollWidth')<=width+2
+              page.screenshot(path='/tmp/payhub-paypal-ui/'+label+'.png',full_page=False)
+              print('PAYPAL_LIVE_UI_'+label.upper()+'=PASS no_PG_calls=true',flush=True)
+              page.close()
+            browser.close()
+          print('PAYPAL_ADMIN_AND_CHECKOUT_REAL_BROWSER=PASS',flush=True)
+          PY
+          python3 /tmp/payhub-paypal-ui.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payhub-paypal-ui-screenshots
+          path: /tmp/payhub-paypal-ui/*.png
+          if-no-files-found: warn

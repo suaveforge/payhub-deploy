@@ -7,7 +7,7 @@
     navProjects: $('#navProjects'), navSessions: $('#navSessions'), navProjectCount: $('#navProjectCount'), apiHealthLink: $('#apiHealthLink'),
     homeView: $('#homeView'), projectsView: $('#projectsView'), sessionsView: $('#sessionsView'), projectsListPane: $('#projectsListPane'), projectEditorPane: $('#projectEditorPane'), projectsResult: $('#projectsResult'),
     projectList: $('#projectList'), projectListCount: $('#projectListCount'), projectForm: $('#projectForm'), projectId: $('#projectId'), projectName: $('#projectName'), projectEnabled: $('#projectEnabled'), projectSourceHint: $('#projectSourceHint'), origins: $('#origins'), webhookUrl: $('#webhookUrl'), apiKey: $('#apiKey'), webhookSecret: $('#webhookSecret'),
-    tossEnabled: $('#tossEnabled'), tossMode: $('#tossMode'), tossClientKey: $('#tossClientKey'), tossSecretKey: $('#tossSecretKey'), stripeEnabled: $('#stripeEnabled'), stripeMode: $('#stripeMode'), stripeSecretKey: $('#stripeSecretKey'), bankTransferEnabled: $('#bankTransferEnabled'), aqrEnabled: $('#aqrEnabled'), aqrToken: $('#aqrToken'), quickbankApiKey: $('#quickbankApiKey'),
+    tossEnabled: $('#tossEnabled'), tossMode: $('#tossMode'), tossClientKey: $('#tossClientKey'), tossSecretKey: $('#tossSecretKey'), stripeEnabled: $('#stripeEnabled'), stripeMode: $('#stripeMode'), stripeSecretKey: $('#stripeSecretKey'), paypalEnabled: $('#paypalEnabled'), paypalMode: $('#paypalMode'), paypalClientId: $('#paypalClientId'), paypalSecret: $('#paypalSecret'), bankTransferEnabled: $('#bankTransferEnabled'), aqrEnabled: $('#aqrEnabled'), aqrToken: $('#aqrToken'), quickbankApiKey: $('#quickbankApiKey'),
     homeProjectCards: $('#homeProjectCards'), homeProjectSummary: $('#homeProjectSummary'), homeSessionRows: $('#homeSessionRows'), sessionRows: $('#sessionRows'), sessionFilters: $('#sessionFilters'),
     editorTitle: $('#editorTitle'), editorState: $('#editorState'), saveProject: $('#saveProject'), cancelProject: $('#cancelProject'), backProjects: $('#backProjects'),
     stripeConnectionSummary: $('#stripeConnectionSummary'), stripeProjectIdPreview: $('#stripeProjectIdPreview'), stripeDisplayNamePreview: $('#stripeDisplayNamePreview'), stripeWebhookPreview: $('#stripeWebhookPreview'),
@@ -199,7 +199,7 @@
   function projectName(id) { const p=payhubProject(id); return p ? projectDisplayName(p) : monitorProject(id)?.name || id; }
   function provider(p, name) { return p?.providers?.[name] || {enabled:false,mode:'test',client_key:'',secret_key:''}; }
   function enabledProviderStates(p) {
-    const labels = {toss:'Toss', stripe:'Stripe', bank_transfer:'은행이체', aqr_transfer:'무료 계좌송금'};
+    const labels = {toss:'Toss', stripe:'Stripe', paypal:'PayPal', bank_transfer:'은행이체', aqr_transfer:'무료 계좌송금'};
     return Object.entries(p?.providers || {})
       .filter(([key,settings])=>key!=='mock' && settings?.enabled)
       .map(([key,settings])=>{
@@ -326,9 +326,12 @@
     els.editorState.textContent = p.enabled ? '활성' : '비활성'; els.editorState.className=`state-chip ${p.enabled?'on':'off'}`;
     renderProjectOptions(p.id); els.projectName.value=p.name||p.id; els.projectEnabled.checked=!!p.enabled;
     els.origins.value=(p.allowed_return_origins||[]).join('\n'); applyHubBridge(p.id,p.webhook_url||''); els.apiKey.value=p.api_key||''; els.webhookSecret.value=p.webhook_secret||'';
-    const t=provider(p,'toss'), st=provider(p,'stripe'), bank=provider(p,'bank_transfer'), aqr=provider(p,'aqr_transfer');
+    const t=provider(p,'toss'), st=provider(p,'stripe'), pp=provider(p,'paypal'), bank=provider(p,'bank_transfer'), aqr=provider(p,'aqr_transfer');
     els.tossEnabled.checked=!!t.enabled; els.tossMode.value=t.mode||'test'; els.tossClientKey.value=t.client_key||''; els.tossSecretKey.value=t.secret_key||'';
     els.stripeEnabled.checked=!!st.enabled; els.stripeMode.value=st.mode||'test'; els.stripeSecretKey.value=st.secret_key||'';
+     els.paypalEnabled.checked=!!pp.enabled; els.paypalMode.value=pp.mode||'test'; els.paypalClientId.value=pp.client_key||'';
+     // This is deliberately blank: the API never echoes PayPal secrets.
+     els.paypalSecret.value=''; els.paypalSecret.placeholder=pp.secret_configured?'•••••••• (저장됨 · 공란이면 유지)':'PayPal REST Secret 입력';
     els.bankTransferEnabled.checked=!!bank.enabled;
     els.aqrEnabled.checked=!!aqr.enabled;
     els.aqrToken.value=aqr.client_key||'';
@@ -338,7 +341,7 @@
     if(push && location.hash !== projectRouteHash(p.id)) history.pushState(null,'',projectRouteHash(p.id));
   }
   function resetNewForm() {
-    els.projectForm.reset(); els.projectEnabled.checked=true; els.tossMode.value='test'; els.stripeMode.value='test'; applyHubBridge('');
+    els.projectForm.reset(); els.projectEnabled.checked=true; els.tossMode.value='test'; els.stripeMode.value='test'; els.paypalMode.value='test'; els.paypalSecret.value=''; applyHubBridge('');
     $('#deleteProject').disabled=true; $('#rotateApi').disabled=true; $('#rotateWebhook').disabled=true; refreshStripeConnectionSummary();
   }
   function newProject({push=true}={}) {
@@ -359,6 +362,7 @@
       providers: {
         toss: {enabled:els.tossEnabled.checked,mode:els.tossMode.value,client_key:els.tossClientKey.value.trim(),secret_key:els.tossSecretKey.value.trim()},
         stripe: {enabled:els.stripeEnabled.checked,mode:els.stripeMode.value,secret_key:els.stripeSecretKey.value.trim()},
+         paypal: {enabled:els.paypalEnabled.checked,mode:els.paypalMode.value,client_key:els.paypalClientId.value.trim(),secret_key:els.paypalSecret.value.trim()},
         bank_transfer: {enabled:els.bankTransferEnabled.checked,mode:'live'},
         aqr_transfer: {enabled:els.aqrEnabled.checked,mode:'live',client_key:els.aqrToken.value.trim(),secret_key:els.quickbankApiKey.value.trim()}
       }
@@ -424,7 +428,7 @@
   els.backProjects.onclick=()=>showProjectsList();
   $('#rotateApi').onclick=async()=>{if(!selectedId||!confirm('기존 PayHub API Secret은 즉시 무효화됩니다. 재발급할까요?'))return;try{const x=await api(`/api/admin/projects/${encodeURIComponent(selectedId)}/rotate-api-key`,{method:'POST',body:'{}'});els.apiKey.value=x.api_key;showNotice('PayHub API Secret을 재발급했습니다.');await loadDashboard();}catch(err){showNotice(err.message,'error');}};
   $('#rotateWebhook').onclick=async()=>{if(!selectedId||!confirm('Webhook Secret을 재발급할까요?'))return;try{const x=await api(`/api/admin/projects/${encodeURIComponent(selectedId)}/rotate-webhook-secret`,{method:'POST',body:'{}'});els.webhookSecret.value=x.webhook_secret;showNotice('Webhook Secret을 재발급했습니다.');await loadDashboard();}catch(err){showNotice(err.message,'error');}};
-  $('#showSecrets').onclick=()=>{for(const e of [els.apiKey,els.webhookSecret,els.tossClientKey,els.tossSecretKey,els.stripeSecretKey]) e.type=e.type==='password'?'text':'password';};
+  $('#showSecrets').onclick=()=>{for(const e of [els.apiKey,els.webhookSecret,els.tossClientKey,els.tossSecretKey,els.stripeSecretKey,els.paypalSecret]) e.type=e.type==='password'?'text':'password';};
   els.sessionFilters.addEventListener('click',e=>{const b=e.target.closest('button[data-status]');if(!b)return;sessionFilter=b.dataset.status||'ALL';renderSessions();});
   window.addEventListener('hashchange',()=>{if(!els.app.classList.contains('hidden'))applyRoute(location.hash);});
 
